@@ -256,3 +256,132 @@
     font-size: 14px;
   }
 }
+
+/* Mint Credits Button */
+.action-btn.mint {
+  background: rgba(0, 224, 184, 0.15);
+  color: #00E0B8;
+  border-color: rgba(0, 224, 184, 0.3);
+}
+
+.action-btn.mint:hover:not(:disabled) {
+  background: rgba(0, 224, 184, 0.25);
+  border-color: rgba(0, 224, 184, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 224, 184, 0.3);
+}
+
+/* Minted badge in drawer */
+.minted-badge {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(171, 71, 188, 0.12);
+  border: 1px solid rgba(171, 71, 188, 0.35);
+  border-radius: 12px;
+  color: #ce93d8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Status pill for MINTED */
+.status-pill.minted {
+  background: rgba(171, 71, 188, 0.15);
+  color: #ce93d8;
+  border: 1px solid rgba(171, 71, 188, 0.3);
+}
+
+/* ── AI Analysis Summary in Drawer ── */
+.ai-summary-section {
+  border-color: rgba(0, 224, 184, 0.15) !important;
+}
+
+.ai-mock-notice {
+  font-size: 11px;
+  color: rgba(255, 167, 38, 0.8);
+  background: rgba(255, 167, 38, 0.08);
+  border: 1px solid rgba(255, 167, 38, 0.2);
+  border-radius: 6px;
+  padding: 5px 9px;
+  margin-bottom: 10px;
+}
+
+.ai-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ai-plant-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.ai-photo-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+}
+
+.ai-pct-badge {
+  font-size: 22px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px solid;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ai-capability-row {
+  margin-bottom: 8px;
+}
+
+.ai-cap-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+
+.ai-pct-bar-wrap {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.ai-pct-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.ai-pct-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 10px;
+}
+
+.ai-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ai-reason-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.4;
+}

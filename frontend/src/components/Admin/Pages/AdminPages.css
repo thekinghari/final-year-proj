@@ -685,6 +685,70 @@
 }
 
 @media (max-width: 768px) {
+  .admin-page {
+    padding: 16px;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+  }
+
+  .config-grid,
+  .summary-grid,
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .users-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .users-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .project-item {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .status-bar-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .action-buttons-group {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .users-table-container {
+    overflow-x: auto;
+  }
+
+  .users-table {
+    min-width: 600px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page {
+    padding: 12px;
+  }
+
+  .page-header h1 {
+    font-size: 18px;
+    gap: 8px;
+  }
+
   .config-grid,
   .summary-grid,
   .metrics-grid,
@@ -692,16 +756,21 @@
     grid-template-columns: 1fr;
   }
 
-  .users-toolbar {
-    flex-direction: column;
-  }
-
   .project-item {
     grid-template-columns: 1fr;
   }
 
-  .status-bar-item {
-    grid-template-columns: 1fr;
-    gap: 8px;
+  .report-config-card,
+  .report-preview-card,
+  .analytics-card {
+    padding: 16px;
+  }
+
+  .stat-box {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 22px;
   }
 }

@@ -258,9 +258,21 @@ router.get('/projects', auth, authorize('admin'), async (req, res) => {
 router.get('/stats', auth, authorize('admin'), async (req, res) => {
   try {
     const Project = require('../models/Project');
-    
+    const TOKEN_PRICE_INR = 200;
+
     const projects = await Project.find({});
-    
+
+    const mintedProjects = projects.filter(p => p.status === 'MINTED');
+    const approvedOnlyProjects = projects.filter(p => p.status === 'APPROVED');
+
+    const confirmedCredits = mintedProjects.reduce(
+      (sum, p) => sum + (p.blockchain?.creditsMinted || Math.round((p.carbon?.estimatedCO2e || 0) / 0.1)), 0
+    );
+    const estimatedCredits = approvedOnlyProjects.reduce(
+      (sum, p) => sum + Math.round((p.carbon?.estimatedCO2e || 0) / 0.1), 0
+    );
+    const totalCredits = confirmedCredits + estimatedCredits;
+
     const stats = {
       totalProjects: projects.length,
       pendingProjects: projects.filter(p => p.status === 'SUBMITTED' || p.status === 'DRAFT').length,
@@ -269,19 +281,120 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
       rejectedProjects: projects.filter(p => p.status === 'REJECTED').length,
       totalArea: projects.reduce((sum, p) => sum + (p.restoration?.areaHectares || 0), 0),
       totalCarbon: projects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0),
+      confirmedCredits,
+      estimatedCredits,
+      totalCredits,
+      mintedProjectsCount: mintedProjects.length,
+      totalEarnings: totalCredits * TOKEN_PRICE_INR,
     };
+
+    res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve statistics', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/admin/projects/:id/mint
+ * @desc    Record blockchain mint after admin mints credits via MetaMask
+ * @access  Admin only
+ * @body    { txHash, tokenAmount, blockNumber, contractAddress, recipientWallet }
+ */
+router.post('/projects/:id/mint', auth, authorize('admin'), async (req, res) => {
+  try {
+    const Project = require('../models/Project');
+    const User = require('../models/User');
+    const { txHash, tokenAmount, blockNumber, contractAddress, recipientWallet } = req.body;
+
+    if (!txHash || !tokenAmount) {
+      return res.status(400).json({ success: false, message: 'txHash and tokenAmount are required' });
+    }
+
+    const project = await Project.findById(req.params.id).populate('submittedBy');
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (project.status !== 'APPROVED') {
+      return res.status(400).json({ success: false, message: 'Project must be APPROVED before minting' });
+    }
+
+    // Use server-side calculation as authoritative value (0.1 tons = 1 token)
+    const calculatedTokens = Math.round((project.carbon?.estimatedCO2e || 0) / 0.1);
+    const finalTokenAmount = calculatedTokens || parseInt(tokenAmount);
+
+    // Update project blockchain fields and status
+    project.status = 'MINTED';
+    project.blockchain = {
+      txHash,
+      tokenId: project.projectId,
+      creditsMinted: finalTokenAmount,
+      mintedAt: new Date(),
+      contractAddress: contractAddress || '',
+    };
+
+    // Save wallet address on user if provided
+    if (recipientWallet && project.submittedBy) {
+      await User.findByIdAndUpdate(project.submittedBy._id, {
+        walletAddress: recipientWallet,
+      });
+    }
+
+    await project.save();
+
+    // Auto-sync to IPFS
+    autoSyncToIPFS().catch((err) => console.error('Auto-sync failed:', err));
 
     res.status(200).json({
       success: true,
-      data: stats,
+      message: `Carbon credits minted: ${finalTokenAmount} BCC tokens`,
+      data: {
+        projectId: project.projectId,
+        creditsMinted: finalTokenAmount,
+        txHash,
+        blockNumber,
+        status: 'MINTED',
+      },
     });
   } catch (error) {
-    console.error('Error fetching admin stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve statistics',
-      error: error.message,
+    console.error('Error recording mint:', error);
+    res.status(500).json({ success: false, message: 'Failed to record mint', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/admin/carbon-credits
+ * @desc    Get total carbon credits minted across all projects
+ * @access  Admin only
+ */
+router.get('/carbon-credits', auth, authorize('admin'), async (req, res) => {
+  try {
+    const Project = require('../models/Project');
+    const mintedProjects = await Project.find({ status: 'MINTED' })
+      .populate('submittedBy', 'name email')
+      .select('projectId projectName blockchain restoration.areaHectares carbon.estimatedCO2e submittedBy');
+
+    const totalCredits = mintedProjects.reduce((sum, p) => sum + (p.blockchain?.creditsMinted || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalCredits,
+        mintedProjectsCount: mintedProjects.length,
+        projects: mintedProjects.map((p) => ({
+          projectId: p.projectId,
+          projectName: p.projectName,
+          credits: p.blockchain?.creditsMinted || 0,
+          txHash: p.blockchain?.txHash,
+          mintedAt: p.blockchain?.mintedAt,
+          submittedBy: p.submittedBy?.name,
+          areaHectares: p.restoration?.areaHectares,
+        })),
+      },
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch carbon credits', error: error.message });
   }
 });
 

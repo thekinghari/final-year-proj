@@ -676,6 +676,17 @@
 /* ══════════════════════════════════════════════
    Responsive
    ══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .hero-title {
+    font-size: clamp(30px, 4vw, 48px);
+  }
+
+  .info-cards,
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .home-nav-container {
     padding: 0 16px;
@@ -696,6 +707,7 @@
 
   .hero-actions {
     flex-direction: column;
+    gap: 12px;
   }
 
   .hero-btn {
@@ -725,7 +737,8 @@
     padding: 40px 24px;
   }
 
-  .features-grid {
+  .features-grid,
+  .info-cards {
     grid-template-columns: 1fr;
   }
 
@@ -740,5 +753,50 @@
 
   .footer-links {
     gap: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 90px 12px 48px;
+  }
+
+  .hero-badge {
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+
+  .hero-stats {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .hero-stat-number {
+    font-size: 22px;
+  }
+
+  .info-section,
+  .features-section,
+  .steps-section,
+  .cta-section {
+    padding: 48px 12px;
+  }
+
+  .info-card,
+  .feature-card {
+    padding: 24px 20px;
+  }
+
+  .cta-container {
+    padding: 32px 16px;
+  }
+
+  .home-footer {
+    padding: 40px 12px 24px;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 24px;
   }
 }

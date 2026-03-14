@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiEye, FiClock, FiCheckCircle, FiXCircle, FiMapPin, FiTrendingUp } from 'react-icons/fi';
 import { projectAPI } from '../../services/api';
+import PlantAnalysisPanel from './PlantAnalysisPanel';
 import './Project.css';
 
 const STATUS_MAP = {
@@ -108,16 +109,51 @@ const ProjectList = () => {
                     <p>{project.description || 'No description provided'}</p>
                   </div>
 
+                  {/* Blockchain / Credits info for MINTED projects */}
+                  {project.status === 'MINTED' && project.blockchain && (
+                    <div className="expanded-section blockchain-section">
+                      <h5>🪙 Carbon Credits</h5>
+                      <div className="blockchain-info">
+                        <div className="bc-row">
+                          <span>Credits Minted</span>
+                          <strong style={{ color: '#00E0B8' }}>
+                            {project.blockchain.creditsMinted} BCC tokens
+                          </strong>
+                        </div>
+                        <div className="bc-row">
+                          <span>Tx Hash</span>
+                          <span className="bc-hash" title={project.blockchain.txHash}>
+                            {project.blockchain.txHash?.slice(0, 18)}...
+                          </span>
+                        </div>
+                        <div className="bc-row">
+                          <span>Minted At</span>
+                          <span>{new Date(project.blockchain.mintedAt).toLocaleDateString()}</span>
+                        </div>
+                        {project.blockchain.txHash && !project.blockchain.contractAddress?.includes('SIMULATION') && (
+                          <a
+                            href={`https://amoy.polygonscan.com/tx/${project.blockchain.txHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="explorer-link-small"
+                          >
+                            View on PolygonScan ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {project.photos?.length > 0 && (
                     <div className="expanded-section">
-                      <h5>📸 Photos</h5>
-                      <div className="photo-thumbs">
+                      <h5>📸 Photos & AI Plant Analysis</h5>
+                      <div className="photo-analysis-grid">
                         {project.photos.map((photo, i) => (
-                          <div key={i} className="photo-thumb">
-                            <span className="ipfs-hash" title={photo.ipfsHash}>
-                              🔗 {photo.ipfsHash?.substring(0, 12)}...
-                            </span>
-                          </div>
+                          <PlantAnalysisPanel
+                            key={i}
+                            photo={photo}
+                            projectName={project.projectName}
+                          />
                         ))}
                       </div>
                     </div>

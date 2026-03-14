@@ -94,7 +94,14 @@ router.post(
       // Upload photos to IPFS
       const photoRecords = [];
       if (req.files && req.files.length > 0) {
-        for (const file of req.files) {
+        // Parse AI analysis results sent from frontend (JSON string keyed by index)
+        let aiResults = {};
+        try {
+          aiResults = req.body.aiAnalysis ? JSON.parse(req.body.aiAnalysis) : {};
+        } catch { aiResults = {}; }
+
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
           try {
             const ipfsResult = await uploadToIPFS(file.path, file.originalname);
             photoRecords.push({
@@ -103,16 +110,17 @@ router.post(
               ipfsHash: ipfsResult.ipfsHash,
               ipfsUrl: ipfsResult.ipfsUrl,
               photoType: 'plantation',
+              aiAnalysis: aiResults[i] || undefined,
             });
           } catch (ipfsError) {
             console.warn(`IPFS upload failed for ${file.originalname}, storing locally:`, ipfsError.message);
-            // Store locally even if IPFS fails
             photoRecords.push({
               filename: file.filename,
               originalName: file.originalname,
               ipfsHash: 'pending',
               ipfsUrl: `/uploads/${file.filename}`,
               photoType: 'plantation',
+              aiAnalysis: aiResults[i] || undefined,
             });
           }
         }
@@ -216,6 +224,59 @@ router.get('/', auth, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────
+// GET /api/projects/my-credits  — Get user's carbon credits
+// ─────────────────────────────────────────────────────────
+router.get('/my-credits', auth, async (req, res) => {
+  try {
+    // Fetch both MINTED and APPROVED projects for this user
+    const userProjects = await Project.find({
+      submittedBy: req.user.id,
+      status: { $in: ['MINTED', 'APPROVED'] },
+    }).select('projectId projectName status blockchain restoration carbon createdAt');
+
+    const mintedProjects = userProjects.filter(p => p.status === 'MINTED');
+    const approvedProjects = userProjects.filter(p => p.status === 'APPROVED');
+
+    // Confirmed credits = sum of blockchain.creditsMinted on MINTED projects
+    const confirmedCredits = mintedProjects.reduce(
+      (sum, p) => sum + (p.blockchain?.creditsMinted || 0), 0
+    );
+
+    // Estimated credits = CO2e tons on APPROVED (not yet minted) projects
+    const estimatedCredits = approvedProjects.reduce(
+      (sum, p) => sum + Math.round((p.carbon?.estimatedCO2e || 0) / 0.1), 0
+    );
+
+    res.json({
+      success: true,
+      data: {
+        confirmedCredits,
+        estimatedCredits,
+        totalCredits: confirmedCredits + estimatedCredits,
+        mintedProjectsCount: mintedProjects.length,
+        approvedProjectsCount: approvedProjects.length,
+        projects: userProjects.map((p) => ({
+          projectId: p.projectId,
+          projectName: p.projectName,
+          status: p.status,
+          credits: p.status === 'MINTED'
+            ? (p.blockchain?.creditsMinted || 0)
+            : Math.round((p.carbon?.estimatedCO2e || 0) / 0.1),
+          confirmed: p.status === 'MINTED',
+          txHash: p.blockchain?.txHash || null,
+          mintedAt: p.blockchain?.mintedAt || null,
+          contractAddress: p.blockchain?.contractAddress || null,
+          areaHectares: p.restoration?.areaHectares,
+          co2e: p.carbon?.estimatedCO2e,
+        })),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch credits', error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
 // GET /api/projects/:id  — Get single project details
 // ─────────────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
@@ -289,6 +350,17 @@ router.put('/:id', auth, upload.array('photos', 5), async (req, res) => {
     if (req.body.longitude) project.location.longitude = parseFloat(req.body.longitude);
     if (req.body.areaHectares) project.restoration.areaHectares = parseFloat(req.body.areaHectares);
     if (req.body.ecosystemType) project.restoration.ecosystemType = req.body.ecosystemType;
+
+    // Recalculate CO2e whenever area or sequestration rate changes
+    if (req.body.areaHectares || req.body.sequestrationRate) {
+      if (req.body.sequestrationRate) {
+        project.carbon.sequestrationRate = parseFloat(req.body.sequestrationRate);
+      }
+      project.carbon.estimatedCO2e = parseFloat(
+        (project.restoration.areaHectares * project.carbon.sequestrationRate).toFixed(2)
+      );
+      project.markModified('carbon');
+    }
 
     // Handle new photo uploads
     if (req.files && req.files.length > 0) {

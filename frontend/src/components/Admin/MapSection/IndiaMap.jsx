@@ -45,97 +45,104 @@ const createPinpointIcon = (projectCount, status) => {
   });
 };
 
-// Group projects by location (state + district)
+// Known geographic centers for Indian states — used as marker positions
+// so markers don't overlap even when all projects share the same GPS point
+const STATE_CENTERS = {
+  'andhra pradesh':     { lat: 15.9129, lng: 79.7400 },
+  'arunachal pradesh':  { lat: 28.2180, lng: 94.7278 },
+  'assam':              { lat: 26.2006, lng: 92.9376 },
+  'bihar':              { lat: 25.0961, lng: 85.3131 },
+  'chhattisgarh':       { lat: 21.2787, lng: 81.8661 },
+  'goa':                { lat: 15.2993, lng: 74.1240 },
+  'gujarat':            { lat: 22.2587, lng: 71.1924 },
+  'haryana':            { lat: 29.0588, lng: 76.0856 },
+  'himachal pradesh':   { lat: 31.1048, lng: 77.1734 },
+  'jharkhand':          { lat: 23.6102, lng: 85.2799 },
+  'karnataka':          { lat: 15.3173, lng: 75.7139 },
+  'kerala':             { lat: 10.8505, lng: 76.2711 },
+  'madhya pradesh':     { lat: 22.9734, lng: 78.6569 },
+  'maharashtra':        { lat: 19.7515, lng: 75.7139 },
+  'manipur':            { lat: 24.6637, lng: 93.9063 },
+  'meghalaya':          { lat: 25.4670, lng: 91.3662 },
+  'mizoram':            { lat: 23.1645, lng: 92.9376 },
+  'nagaland':           { lat: 26.1584, lng: 94.5624 },
+  'odisha':             { lat: 20.9517, lng: 85.0985 },
+  'punjab':             { lat: 31.1471, lng: 75.3412 },
+  'rajasthan':          { lat: 27.0238, lng: 74.2179 },
+  'sikkim':             { lat: 27.5330, lng: 88.5122 },
+  'tamil nadu':         { lat: 11.1271, lng: 78.6569 },
+  'telangana':          { lat: 18.1124, lng: 79.0193 },
+  'tripura':            { lat: 23.9408, lng: 91.9882 },
+  'uttar pradesh':      { lat: 26.8467, lng: 80.9462 },
+  'uttarakhand':        { lat: 30.0668, lng: 79.0193 },
+  'west bengal':        { lat: 22.9868, lng: 87.8550 },
+  // Union Territories
+  'delhi':              { lat: 28.7041, lng: 77.1025 },
+  'jammu and kashmir':  { lat: 33.7782, lng: 76.5762 },
+  'ladakh':             { lat: 34.1526, lng: 77.5770 },
+  'puducherry':         { lat: 11.9416, lng: 79.8083 },
+  'andaman and nicobar islands': { lat: 11.7401, lng: 92.6586 },
+  'chandigarh':         { lat: 30.7333, lng: 76.7794 },
+  'lakshadweep':        { lat: 10.5667, lng: 72.6417 },
+};
+
+// Group projects by STATE — one marker per state at the state's geographic center
 const groupProjectsByLocation = (projects) => {
-  console.log('🗺️ Starting to group projects. Total projects:', projects.length);
-  
-  const locationMap = new Map();
-  let projectsWithLocation = 0;
-  let projectsWithoutLocation = 0;
-  
-  projects.forEach((project, idx) => {
-    // Check if project has location data
-    if (!project.location?.state || !project.location?.district) {
-      projectsWithoutLocation++;
-      console.warn(`⚠️ Project ${idx + 1} (${project.projectId || 'unknown'}) missing location:`, {
-        hasLocation: !!project.location,
-        hasState: !!project.location?.state,
-        hasDistrict: !!project.location?.district,
-        location: project.location
-      });
-      return;
-    }
-    
-    projectsWithLocation++;
-    
-    // Create unique key for each state-district combination
-    const key = `${project.location.state}-${project.location.district}`;
-    
-    if (!locationMap.has(key)) {
-      locationMap.set(key, {
-        state: project.location.state,
-        district: project.location.district,
+  console.log('🗺️ Grouping projects by state. Total projects:', projects.length);
+
+  const stateMap = new Map();
+
+  projects.forEach((project) => {
+    const rawState = project.location?.state?.trim() || '';
+    const key = rawState.toLowerCase() || 'unknown';
+
+    if (!stateMap.has(key)) {
+      stateMap.set(key, {
+        state: rawState || 'Unknown State',
         projects: [],
-        coordinates: [], // Store all coordinates for averaging
+        districts: new Map(),
       });
-      console.log(`📍 New location found: ${project.location.district}, ${project.location.state}`);
     }
-    
-    const group = locationMap.get(key);
+
+    const group = stateMap.get(key);
     group.projects.push(project);
-    
-    // Collect coordinates from all projects
-    if (project.location?.coordinates && Array.isArray(project.location.coordinates) && project.location.coordinates.length === 2) {
-      const [lat, lng] = project.location.coordinates;
-      if (lat && lng) {
-        group.coordinates.push({ lat, lng });
-      }
-    } else if (project.location?.latitude && project.location?.longitude) {
-      const lat = project.location.latitude;
-      const lng = project.location.longitude;
-      if (lat && lng) {
-        group.coordinates.push({ lat, lng });
-      }
-    } else {
-      console.warn(`⚠️ Project ${project.projectId} has location but no coordinates`);
-    }
+
+    // Track per-district counts
+    const rawDistrict = project.location?.district?.trim() || 'Unknown District';
+    const dKey = rawDistrict.toLowerCase();
+    group.districts.set(dKey, {
+      name: rawDistrict,
+      count: (group.districts.get(dKey)?.count || 0) + 1,
+    });
   });
-  
-  console.log(`📊 Location grouping summary:
-    - Projects with location: ${projectsWithLocation}
-    - Projects without location: ${projectsWithoutLocation}
-    - Unique locations: ${locationMap.size}`);
-  
-  // Calculate average coordinates for each location group
-  const locationGroups = Array.from(locationMap.values())
-    .filter(group => {
-      if (group.coordinates.length === 0) {
-        console.warn(`⚠️ Location ${group.district}, ${group.state} has ${group.projects.length} projects but no coordinates`);
-        return false;
-      }
-      return true;
-    })
+
+  console.log(`📊 State grouping: ${projects.length} projects across ${stateMap.size} states`);
+
+  const locationGroups = Array.from(stateMap.values())
     .map(group => {
-      // Calculate average lat/lng from all projects in this location
-      const avgLat = group.coordinates.reduce((sum, coord) => sum + coord.lat, 0) / group.coordinates.length;
-      const avgLng = group.coordinates.reduce((sum, coord) => sum + coord.lng, 0) / group.coordinates.length;
-      
+      const stateKey = group.state.toLowerCase();
+      const center = STATE_CENTERS[stateKey];
+
+      if (!center) {
+        console.warn(`⚠️ No known center for state: "${group.state}" — skipping marker`);
+        return null;
+      }
+
       const projectCount = group.projects.length;
       const color = projectCount >= 5 ? '🔴' : projectCount >= 2 ? '🟠' : '🟢';
-      
-      console.log(`${color} ${group.district}, ${group.state}: ${projectCount} projects at [${avgLat.toFixed(4)}, ${avgLng.toFixed(4)}]`);
-      
+      console.log(`${color} ${group.state}: ${projectCount} projects`);
+
       return {
         state: group.state,
-        district: group.district,
+        districts: Array.from(group.districts.values()),
         projects: group.projects,
-        lat: avgLat,
-        lng: avgLng,
+        lat: center.lat,
+        lng: center.lng,
       };
-    });
-  
-  console.log(`✅ Final result: ${locationGroups.length} locations will be shown on map`);
-  
+    })
+    .filter(Boolean);
+
+  console.log(`✅ ${locationGroups.length} state markers will be shown on map`);
   return locationGroups;
 };
 
@@ -147,24 +154,8 @@ const IndiaMap = ({ projects, onProjectClick, selectedProject }) => {
   // Group projects by location for density-based markers
   const locationGroups = useMemo(() => {
     console.log('🗺️ IndiaMap received', projects?.length || 0, 'projects');
-    
-    // If no projects, return empty array
-    if (!projects || projects.length === 0) {
-      return [];
-    }
-    
-    // Log each project's location data
-    projects.forEach((project, idx) => {
-      console.log(`Project ${idx + 1}:`, {
-        id: project.projectId,
-        state: project.location?.state,
-        district: project.location?.district,
-        hasCoordinates: !!(project.location?.coordinates || (project.location?.latitude && project.location?.longitude))
-      });
-    });
-    
-    const groups = groupProjectsByLocation(projects || []);
-    return groups;
+    if (!projects || projects.length === 0) return [];
+    return groupProjectsByLocation(projects);
   }, [projects]);
 
   return (
@@ -195,7 +186,7 @@ const IndiaMap = ({ projects, onProjectClick, selectedProject }) => {
 
         return (
           <Marker
-            key={`${group.state}-${group.district}-${index}`}
+            key={`${group.state}-${index}`}
             position={[group.lat, group.lng]}
             icon={createPinpointIcon(projectCount, group.projects[0]?.status)}
             eventHandlers={{
@@ -209,22 +200,18 @@ const IndiaMap = ({ projects, onProjectClick, selectedProject }) => {
           >
             <Popup maxWidth={300}>
               <div style={{ minWidth: '260px', padding: '12px' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+                {/* State header + total count */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'space-between',
                   marginBottom: '12px',
                   paddingBottom: '12px',
                   borderBottom: '1px solid rgba(0, 224, 184, 0.2)'
                 }}>
-                  <div>
-                    <strong style={{ color: '#00E0B8', fontSize: '16px', display: 'block' }}>
-                      {group.district}
-                    </strong>
-                    <span style={{ fontSize: '13px', color: '#999' }}>
-                      {group.state}
-                    </span>
-                  </div>
+                  <strong style={{ color: '#00E0B8', fontSize: '16px' }}>
+                    {group.state}
+                  </strong>
                   <div style={{
                     background: projectCount >= 5 ? '#ef4444' : projectCount >= 2 ? '#f59e0b' : '#10b981',
                     color: 'white',
@@ -237,56 +224,53 @@ const IndiaMap = ({ projects, onProjectClick, selectedProject }) => {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '12px', marginBottom: '8px', color: '#ccc' }}>
-                    <strong>Project Status:</strong>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {approvedCount > 0 && (
-                      <span style={{ 
-                        background: 'rgba(34, 197, 94, 0.2)', 
-                        color: '#22c55e',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '600'
+                {/* District breakdown */}
+                {group.districts && group.districts.length > 0 && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '6px' }}>
+                      <strong>Districts:</strong>
+                    </div>
+                    {group.districts.map(d => (
+                      <div key={d.name} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '12px',
+                        padding: '3px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)'
                       }}>
+                        <span style={{ color: '#ddd' }}>{d.name}</span>
+                        <span style={{ color: '#00E0B8', fontWeight: '600' }}>{d.count} project{d.count > 1 ? 's' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Status breakdown */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '6px' }}>
+                    <strong>Status:</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {approvedCount > 0 && (
+                      <span style={{ background: 'rgba(34,197,94,0.2)', color: '#22c55e', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
                         ✓ {approvedCount} Approved
                       </span>
                     )}
                     {pendingCount > 0 && (
-                      <span style={{ 
-                        background: 'rgba(251, 191, 36, 0.2)', 
-                        color: '#fbbf24',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '600'
-                      }}>
+                      <span style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
                         ⏳ {pendingCount} Pending
                       </span>
                     )}
                     {rejectedCount > 0 && (
-                      <span style={{ 
-                        background: 'rgba(239, 68, 68, 0.2)', 
-                        color: '#ef4444',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '600'
-                      }}>
+                      <span style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
                         ✗ {rejectedCount} Rejected
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div style={{ 
-                  background: 'rgba(0, 224, 184, 0.1)', 
-                  padding: '10px',
-                  borderRadius: '8px',
-                  marginBottom: '12px'
-                }}>
+                {/* Area + Carbon */}
+                <div style={{ background: 'rgba(0,224,184,0.1)', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
                   <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ color: '#999' }}>📏 Total Area:</span>
                     <strong style={{ color: '#00E0B8' }}>{totalArea.toFixed(2)} ha</strong>
@@ -297,32 +281,20 @@ const IndiaMap = ({ projects, onProjectClick, selectedProject }) => {
                   </div>
                 </div>
 
-                {projectCount > 1 && (
-                  <div style={{ fontSize: '11px', color: '#999', fontStyle: 'italic', textAlign: 'center' }}>
-                    Click on individual projects in the table to view details
-                  </div>
-                )}
-
                 {projectCount === 1 && (
                   <button
                     onClick={() => onProjectClick(group.projects[0])}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      background: '#00E0B8',
-                      color: '#0a1628',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    style={{ width: '100%', padding: '8px', background: '#00E0B8', color: '#0a1628', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
                     onMouseOver={(e) => e.target.style.background = '#00c9a7'}
                     onMouseOut={(e) => e.target.style.background = '#00E0B8'}
                   >
                     View Project Details
                   </button>
+                )}
+                {projectCount > 1 && (
+                  <div style={{ fontSize: '11px', color: '#999', fontStyle: 'italic', textAlign: 'center' }}>
+                    Select a project from the table to view details
+                  </div>
                 )}
               </div>
             </Popup>

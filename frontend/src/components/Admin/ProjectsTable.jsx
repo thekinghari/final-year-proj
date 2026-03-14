@@ -76,7 +76,7 @@ const ProjectsTable = ({ projects, loading, onProjectSelect, data }) => {
                 <td>{new Date(project.createdAt).toLocaleDateString()}</td>
                 <td>
                   <span className={`status-pill ${project.status.toLowerCase()}`}>
-                    {project.status}
+                    {project.status === 'MINTED' ? '🪙 MINTED' : project.status}
                   </span>
                 </td>
                 <td>

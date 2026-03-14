@@ -90,13 +90,25 @@ const projectSchema = new mongoose.Schema(
       {
         filename: { type: String },
         originalName: { type: String },
-        ipfsHash: { type: String }, // IPFS CID after upload
-        ipfsUrl: { type: String }, // Full IPFS gateway URL
+        ipfsHash: { type: String },
+        ipfsUrl: { type: String },
         uploadedAt: { type: Date, default: Date.now },
         photoType: {
           type: String,
           enum: ['site_before', 'site_after', 'plantation', 'species', 'gps_proof', 'other'],
           default: 'plantation',
+        },
+        // AI analysis result stored at submission time
+        aiAnalysis: {
+          plantName: { type: String },
+          plantType: { type: String },
+          carbonCapability: { type: String },
+          sequestrationPercentage: { type: Number },
+          confidence: { type: Number },
+          reasons: [{ type: String }],
+          ecosystemBenefit: { type: String },
+          mock: { type: Boolean, default: false },
+          analyzedAt: { type: Date },
         },
       },
     ],
@@ -150,7 +162,7 @@ projectSchema.pre('save', async function (next) {
     this.projectId = `BCR-${String(count + 1).padStart(5, '0')}-${timestamp}`;
   }
 
-  // Auto-calculate CO2e if not set
+  // Auto-calculate CO2e whenever area or sequestration rate is present
   if (this.restoration.areaHectares && this.carbon.sequestrationRate) {
     this.carbon.estimatedCO2e = parseFloat(
       (this.restoration.areaHectares * this.carbon.sequestrationRate).toFixed(2)

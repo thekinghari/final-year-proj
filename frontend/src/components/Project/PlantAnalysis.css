@@ -1,0 +1,222 @@
+.plant-analysis-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Photo + overlay */
+.analysis-photo-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+  overflow: hidden;
+}
+
+.analysis-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.analyze-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(0, 191, 165, 0.9);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+
+.analyze-btn:hover {
+  background: #00bfa5;
+}
+
+.analyze-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  font-size: 22px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.analysis-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  color: #ef5350;
+  font-size: 12px;
+}
+
+.retry-btn {
+  margin-left: auto;
+  padding: 4px 10px;
+  background: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  border: 1px solid #ef5350;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Results */
+.analysis-result {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mock-notice {
+  font-size: 11px;
+  color: rgba(255, 167, 38, 0.8);
+  background: rgba(255, 167, 38, 0.08);
+  border: 1px solid rgba(255, 167, 38, 0.2);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.plant-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.plant-type {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+
+.confidence-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* Carbon capability */
+.carbon-capability-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.capability-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+
+.sequestration-pct {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Progress bar */
+.pct-bar-wrap {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pct-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.pct-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: -4px;
+}
+
+/* Reasons */
+.reasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reason-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Ecosystem benefit */
+.ecosystem-benefit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid rgba(0, 191, 165, 0.4);
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+  line-height: 1.5;
+}
+
+.re-analyze-btn {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.re-analyze-btn:hover {
+  color: #00bfa5;
+  border-color: #00bfa5;
+}

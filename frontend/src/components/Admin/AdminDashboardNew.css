@@ -202,24 +202,61 @@
 
 @media (max-width: 768px) {
   .admin-dashboard-content {
-    padding: 16px;
+    padding: 12px;
   }
   
   .stats-cards-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   
   .admin-main-grid {
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .admin-map-section,
+  .admin-activity-section,
+  .admin-projects-section {
+    padding: 16px;
+    border-radius: 12px;
   }
   
   .map-container-wrapper {
-    height: 400px;
+    height: 350px;
   }
   
   .section-title {
-    font-size: 18px;
+    font-size: 16px;
+  }
+
+  .admin-activity-section {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-dashboard-content {
+    padding: 8px;
+  }
+
+  .stats-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .map-container-wrapper {
+    height: 280px;
+  }
+
+  .admin-map-section,
+  .admin-activity-section,
+  .admin-projects-section {
+    padding: 12px;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 

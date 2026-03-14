@@ -23,10 +23,17 @@ const StatsCards = ({ data, loading }) => {
       />
       <CarbonCard 
         totalCarbon={data.totalCarbon}
+        totalCredits={data.totalCredits}
+        confirmedCredits={data.confirmedCredits}
+        estimatedCredits={data.estimatedCredits}
+        mintedProjectsCount={data.mintedProjectsCount}
         loading={loading}
       />
       <EarningsCard 
         totalEarnings={data.totalEarnings}
+        totalCredits={data.totalCredits}
+        confirmedCredits={data.confirmedCredits}
+        estimatedCredits={data.estimatedCredits}
         statesCount={data.statesCount}
         loading={loading}
       />

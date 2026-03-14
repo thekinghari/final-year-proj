@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import {
   FiMapPin, FiCamera, FiUpload, FiTrash2, FiPlus,
-  FiNavigation, FiCheck, FiAlertCircle, FiWifiOff, FiSend
+  FiNavigation, FiCheck, FiAlertCircle, FiWifiOff, FiSend, FiZap
 } from 'react-icons/fi';
+import axios from 'axios';
 import { projectAPI, offlineQueue } from '../../services/api';
 import './Project.css';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Mangrove species common in India
 const COMMON_SPECIES = [
@@ -48,7 +51,7 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
     species: [{ name: '', count: '' }],
   });
 
-  const [photos, setPhotos] = useState([]); // {file, preview, type}
+  const [photos, setPhotos] = useState([]); // {file, preview, type, aiAnalysis, aiLoading}
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('idle'); // idle | loading | success | error
   const [submitting, setSubmitting] = useState(false);
@@ -131,6 +134,34 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
     );
   };
 
+  // ── AI Analysis ──
+  const analyzePhoto = async (file, index) => {
+    try {
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const token = localStorage.getItem('bcr_token');
+      const res = await axios.post(
+        `${API_BASE}/analyze/plant`,
+        { imageBase64: base64, mimeType: file.type || 'image/jpeg' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setPhotos(prev => prev.map((p, i) =>
+        i === index ? { ...p, aiAnalysis: res.data.data, aiLoading: false } : p
+      ));
+    } catch {
+      setPhotos(prev => prev.map((p, i) =>
+        i === index ? { ...p, aiLoading: false } : p
+      ));
+    }
+  };
+
   // ── Photo Handling ──
   const handlePhotoSelect = (e) => {
     const files = Array.from(e.target.files);
@@ -139,14 +170,22 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
       return;
     }
 
+    const startIndex = photos.length;
     const newPhotos = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
       type: 'plantation',
+      aiAnalysis: null,
+      aiLoading: true, // start loading immediately
     }));
 
     setPhotos((prev) => [...prev, ...newPhotos]);
-    toast.success(`${files.length} photo(s) added`);
+    toast.success(`${files.length} photo(s) added — analysing with AI...`);
+
+    // Kick off AI analysis for each new photo
+    newPhotos.forEach((_, i) => {
+      analyzePhoto(files[i], startIndex + i);
+    });
   };
 
   const removePhoto = (index) => {
@@ -232,6 +271,17 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
       photos.forEach((photo) => {
         submitData.append('photos', photo.file);
       });
+
+      // Bundle AI analysis results (keyed by photo index)
+      const aiResults = {};
+      photos.forEach((photo, i) => {
+        if (photo.aiAnalysis) {
+          aiResults[i] = { ...photo.aiAnalysis, analyzedAt: new Date().toISOString() };
+        }
+      });
+      if (Object.keys(aiResults).length > 0) {
+        submitData.append('aiAnalysis', JSON.stringify(aiResults));
+      }
 
       const response = await projectAPI.submit(submitData);
       toast.success(response.data.message || 'Project submitted successfully!');
@@ -555,6 +605,18 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
                       <FiTrash2 />
                     </button>
                   </div>
+                  {/* AI Analysis badge */}
+                  {photo.aiLoading && (
+                    <div className="ai-badge loading">
+                      <span className="spinner small" /> Analysing...
+                    </div>
+                  )}
+                  {!photo.aiLoading && photo.aiAnalysis && (
+                    <div className={`ai-badge done cap-${photo.aiAnalysis.carbonCapability?.toLowerCase().replace(' ', '-')}`}>
+                      <FiZap size={10} />
+                      {photo.aiAnalysis.carbonCapability} · {photo.aiAnalysis.sequestrationPercentage}%
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

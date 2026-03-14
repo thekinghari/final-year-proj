@@ -78,6 +78,9 @@ export const projectAPI = {
     api.put(`/projects/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+
+  // Get user's minted carbon credits
+  getMyCredits: () => api.get('/projects/my-credits'),
 };
 
 // ═══════════════════════════════════════════

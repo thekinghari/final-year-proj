@@ -54,11 +54,13 @@ const fetchFromIPFS = async (hash) => {
 
 /**
  * Calculate statistics from projects
+ * TOKEN_PRICE_INR: 1 BCC token = ₹200
  */
+const TOKEN_PRICE_INR = 200;
+
 const calculateStats = (projects) => {
   try {
     const totalProjects = projects.length;
-    // Status mapping: SUBMITTED/DRAFT = Pending, UNDER_REVIEW/REVIEW = Review
     const pendingProjects = projects.filter(p => p.status === 'SUBMITTED' || p.status === 'DRAFT').length;
     const reviewProjects = projects.filter(p => p.status === 'UNDER_REVIEW' || p.status === 'REVIEW').length;
     const approvedProjects = projects.filter(p => p.status === 'APPROVED' || p.status === 'MINTED').length;
@@ -68,11 +70,29 @@ const calculateStats = (projects) => {
     const totalCarbon = projects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0);
     const equivalentCars = Math.floor(totalCarbon / 4.6);
 
+    // Confirmed credits: MINTED projects
+    const mintedProjects = projects.filter(p => p.status === 'MINTED');
+    const confirmedCredits = mintedProjects.reduce(
+      (sum, p) => sum + (p.blockchain?.creditsMinted || Math.round((p.carbon?.estimatedCO2e || 0) / 0.1)), 0
+    );
+    const mintedProjectsCount = mintedProjects.length;
+
+    // Estimated credits: APPROVED (not yet minted) — use CO2e tons as credit estimate
+    const approvedOnlyProjects = projects.filter(p => p.status === 'APPROVED');
+    const estimatedCredits = approvedOnlyProjects.reduce(
+      (sum, p) => sum + Math.round((p.carbon?.estimatedCO2e || 0) / 0.1), 0
+    );
+
+    // Total credits = confirmed + estimated
+    const totalCredits = confirmedCredits + estimatedCredits;
+
+    // Earnings in INR based on total credits
+    const totalEarnings = totalCredits * TOKEN_PRICE_INR;
+
     const states = new Set(projects.map(p => p.location?.state).filter(Boolean));
     const statesCount = states.size;
 
-    // Generate activity feed from recent projects
-    const activityFeed = projects
+    const activityFeed = [...projects]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 10)
       .map(p => ({
@@ -94,7 +114,11 @@ const calculateStats = (projects) => {
       monthlyAreaIncrease: 0,
       totalCarbon: parseFloat(totalCarbon.toFixed(2)),
       equivalentCars,
-      totalEarnings: 0,
+      totalEarnings,
+      totalCredits,
+      confirmedCredits,
+      estimatedCredits,
+      mintedProjectsCount,
       statesCount,
       activityFeed,
     };
@@ -105,59 +129,31 @@ const calculateStats = (projects) => {
 };
 
 /**
- * Main function: Fetch admin data with IPFS-first approach
+ * Main function: Fetch admin data — always from DB for live accuracy
  */
 export const fetchAdminData = async () => {
   try {
-    // Step 1: Try to get latest IPFS hash
-    console.log('🔍 Checking for IPFS snapshot...');
-    const ipfsData = await getLatestIPFSHash();
-    
-    if (ipfsData && ipfsData.hash) {
-      console.log(`📦 Found IPFS hash: ${ipfsData.hash}`);
-      
-      try {
-        // Step 2: Fetch from IPFS
-        const rawData = await fetchFromIPFS(ipfsData.hash);
-        
-        // Step 3: Parse IPFS data
-        if (rawData && rawData.projects) {
-          console.log(`✅ Loaded ${rawData.projects.length} projects from IPFS`);
-          
-          const stats = rawData.stats || calculateStats(rawData.projects);
-          
-          return {
-            ...stats,
-            projects: rawData.projects,
-            activityFeed: rawData.activityFeed || stats.activityFeed,
-            ipfsHash: ipfsData.hash,
-            ipfsUrl: ipfsData.url,
-            dataSource: 'ipfs',
-          };
-        }
-      } catch (ipfsError) {
-        console.warn('⚠️ IPFS fetch failed, falling back to database');
-      }
-    } else {
-      console.log('ℹ️ No IPFS snapshot found, using database');
-    }
-
-    // Step 4: Fallback to database
-    console.log('📊 Fetching from database...');
+    // Always fetch fresh projects from DB (IPFS can be stale after minting)
+    console.log('📊 Fetching projects from database...');
     const projects = await getAllProjectsFromDB();
-    
+
     if (!projects || projects.length === 0) {
       console.log('ℹ️ No projects found');
       return getZeroStateData();
     }
-    
+
     console.log(`✅ Loaded ${projects.length} projects from database`);
     const stats = calculateStats(projects);
-    
+
+    // Also try to get IPFS hash for reference (non-blocking)
+    const ipfsData = await getLatestIPFSHash().catch(() => null);
+
     return {
       ...stats,
       projects,
       dataSource: 'database',
+      ipfsHash: ipfsData?.hash || null,
+      ipfsUrl: ipfsData?.url || null,
     };
   } catch (error) {
     console.error('❌ Failed to fetch admin data:', error);
@@ -209,6 +205,10 @@ const getZeroStateData = () => ({
   projects: [],
   activityFeed: [],
   dataSource: 'none',
+  totalCredits: 0,
+  confirmedCredits: 0,
+  estimatedCredits: 0,
+  mintedProjectsCount: 0,
 });
 
 // Legacy export for backward compatibility
