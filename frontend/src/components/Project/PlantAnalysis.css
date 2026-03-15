@@ -174,6 +174,18 @@
   margin-top: -4px;
 }
 
+/* Bar range markers */
+.pct-bar-markers {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+}
+
+.pct-bar-markers span {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.25);
+}
+
 /* Reasons */
 .reasons-list {
   display: flex;

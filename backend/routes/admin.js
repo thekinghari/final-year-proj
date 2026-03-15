@@ -273,14 +273,17 @@ router.get('/stats', auth, authorize('admin'), async (req, res) => {
     );
     const totalCredits = confirmedCredits + estimatedCredits;
 
+    // Exclude rejected projects from area/carbon totals
+    const activeProjects = projects.filter(p => p.status !== 'REJECTED');
+
     const stats = {
       totalProjects: projects.length,
       pendingProjects: projects.filter(p => p.status === 'SUBMITTED' || p.status === 'DRAFT').length,
       reviewProjects: projects.filter(p => p.status === 'UNDER_REVIEW' || p.status === 'REVIEW').length,
       approvedProjects: projects.filter(p => p.status === 'APPROVED' || p.status === 'MINTED').length,
       rejectedProjects: projects.filter(p => p.status === 'REJECTED').length,
-      totalArea: projects.reduce((sum, p) => sum + (p.restoration?.areaHectares || 0), 0),
-      totalCarbon: projects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0),
+      totalArea: activeProjects.reduce((sum, p) => sum + (p.restoration?.areaHectares || 0), 0),
+      totalCarbon: activeProjects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0),
       confirmedCredits,
       estimatedCredits,
       totalCredits,

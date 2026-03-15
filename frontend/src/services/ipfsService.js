@@ -66,8 +66,10 @@ const calculateStats = (projects) => {
     const approvedProjects = projects.filter(p => p.status === 'APPROVED' || p.status === 'MINTED').length;
     const rejectedProjects = projects.filter(p => p.status === 'REJECTED').length;
 
-    const totalArea = projects.reduce((sum, p) => sum + (p.restoration?.areaHectares || 0), 0);
-    const totalCarbon = projects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0);
+    // Only count non-rejected projects for area and carbon totals
+    const activeProjects = projects.filter(p => p.status !== 'REJECTED');
+    const totalArea = activeProjects.reduce((sum, p) => sum + (p.restoration?.areaHectares || 0), 0);
+    const totalCarbon = activeProjects.reduce((sum, p) => sum + (p.carbon?.estimatedCO2e || 0), 0);
     const equivalentCars = Math.floor(totalCarbon / 4.6);
 
     // Confirmed credits: MINTED projects

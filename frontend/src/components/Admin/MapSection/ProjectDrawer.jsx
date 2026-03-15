@@ -15,6 +15,21 @@ const CAPABILITY_COLOR = {
   'very-high': '#00bfa5',
 };
 
+// Clamp a raw sequestration value (may be legacy 0–200 scale) to 0–100
+const clampPct = (raw) => {
+  const n = Number(raw) || 0;
+  if (n > 100) return Math.round(Math.min((n / 200) * 100, 100));
+  return Math.max(0, Math.min(100, Math.round(n)));
+};
+
+// Derive capability label from a 0–100 percentage
+const capabilityFromPct = (pct) => {
+  if (pct <= 30)      return 'Low';
+  if (pct <= 60)      return 'Medium';
+  if (pct <= 85)      return 'High';
+  return 'Very High';
+};
+
 // Aggregate AI analysis across all photos of a project
 const getAISummary = (photos) => {
   if (!photos?.length) return null;
@@ -22,17 +37,14 @@ const getAISummary = (photos) => {
   if (!analysed.length) return null;
 
   const avgPct = Math.round(
-    analysed.reduce((s, p) => s + (p.aiAnalysis.sequestrationPercentage || 0), 0) / analysed.length
+    analysed.reduce((s, p) => s + clampPct(p.aiAnalysis.sequestrationPercentage), 0) / analysed.length
   );
   const avgConf = Math.round(
-    analysed.reduce((s, p) => s + (p.aiAnalysis.confidence || 0), 0) / analysed.length
+    analysed.reduce((s, p) => s + Math.min(100, Number(p.aiAnalysis.confidence) || 0), 0) / analysed.length
   );
 
-  // Pick the most common capability
-  const caps = analysed.map(p => p.aiAnalysis.carbonCapability);
-  const capability = caps.sort((a, b) =>
-    caps.filter(v => v === b).length - caps.filter(v => v === a).length
-  )[0];
+  // Derive capability from the sanitized average percentage (don't trust stored label)
+  const capability = capabilityFromPct(avgPct);
 
   // Collect unique plant names
   const plants = [...new Set(analysed.map(p => p.aiAnalysis.plantName).filter(Boolean))];
@@ -222,9 +234,9 @@ const ProjectDrawer = ({ project, onClose, onActionComplete }) => {
                 </div>
 
                 <div className="ai-pct-bar-wrap">
-                  <div className="ai-pct-bar" style={{ width: `${Math.min(ai.avgPct, 100)}%`, background: color }} />
+                  <div className="ai-pct-bar" style={{ width: `${ai.avgPct}%`, background: color }} />
                 </div>
-                <div className="ai-pct-label">Sequestration vs. average vegetation</div>
+                <div className="ai-pct-label">Carbon sequestration effectiveness (0–100%)</div>
 
                 {ai.reasons.length > 0 && (
                   <div className="ai-reasons">

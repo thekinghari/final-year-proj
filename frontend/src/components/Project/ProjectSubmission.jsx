@@ -152,9 +152,16 @@ const ProjectSubmission = ({ onSubmitSuccess }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setPhotos(prev => prev.map((p, i) =>
-        i === index ? { ...p, aiAnalysis: res.data.data, aiLoading: false } : p
-      ));
+      setPhotos(prev => prev.map((p, i) => {
+        if (i !== index) return p;
+        const raw = res.data.data;
+        // Clamp percentage — legacy data may use 0–200 scale
+        let pct = Math.round(Number(raw.sequestrationPercentage) || 0);
+        if (pct > 100) pct = Math.round(Math.min((pct / 200) * 100, 100));
+        pct = Math.max(0, Math.min(100, pct));
+        let cap = pct <= 30 ? 'Low' : pct <= 60 ? 'Medium' : pct <= 85 ? 'High' : 'Very High';
+        return { ...p, aiAnalysis: { ...raw, sequestrationPercentage: pct, carbonCapability: cap }, aiLoading: false };
+      }));
     } catch {
       setPhotos(prev => prev.map((p, i) =>
         i === index ? { ...p, aiLoading: false } : p

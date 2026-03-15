@@ -51,7 +51,7 @@ const PlantAnalysisPanel = ({ photo, projectName }) => {
         { imageBase64: base64, mimeType },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setResult({ ...res.data.data, isMock: res.data.mock });
+      setResult({ ...res.data.data, isMock: res.data.mock, sequestrationPercentage: Math.min(res.data.data.sequestrationPercentage ?? 0, 100) });
       setState('done');
     } catch (err) {
       setError(err.response?.data?.message || 'Analysis failed. Please try again.');
@@ -122,14 +122,20 @@ const PlantAnalysisPanel = ({ photo, projectName }) => {
             </div>
           </div>
 
-          {/* Progress bar */}
+          {/* Progress bar with range markers */}
           <div className="pct-bar-wrap">
             <div
               className="pct-bar"
-              style={{ width: `${Math.min(result.sequestrationPercentage, 100)}%`, background: capabilityColor }}
+              style={{ width: `${result.sequestrationPercentage}%`, background: capabilityColor }}
             />
           </div>
-          <div className="pct-label">Carbon sequestration vs. average vegetation</div>
+          <div className="pct-bar-markers">
+            <span>Low</span>
+            <span>Medium</span>
+            <span>High</span>
+            <span>Very High</span>
+          </div>
+          <div className="pct-label">Carbon sequestration effectiveness (0–100%)</div>
 
           {/* Reasons */}
           <div className="reasons-list">
