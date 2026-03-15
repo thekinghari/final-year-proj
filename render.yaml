@@ -1,0 +1,48 @@
+services:
+  # ── Backend API (Node/Express) ──────────────────────────────
+  - type: web
+    name: blue-carbon-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false          # Set this in Render dashboard
+      - key: JWT_SECRET
+        sync: false          # Set this in Render dashboard
+      - key: PINATA_API_KEY
+        sync: false
+      - key: PINATA_SECRET_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false          # Set to your Render static site URL after deploy
+
+  # ── Frontend (React/Vite Static Site) ──────────────────────
+  - type: web
+    name: blue-carbon-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false          # Set to your Render backend URL + /api
+      - key: VITE_IPFS_GATEWAY
+        value: https://ipfs.io/ipfs/
+      - key: VITE_IPFS_ENABLED
+        value: false
+      - key: VITE_CONTRACT_ADDRESS
+        value: ""
+      - key: VITE_CHAIN_ID
+        value: "0x13882"
