@@ -22,7 +22,7 @@ const connectDB = async () => {
       return false;
     }
 
-    const conn = await mongoose.connect(mongoUri);
+    const conn = await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 10000 });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     return true;
   } catch (error) {
